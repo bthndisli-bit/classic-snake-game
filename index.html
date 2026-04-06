@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Classic Snake</title>
+<style>
+body {
+    margin: 0;
+    background: black;
+    overflow: hidden;
+    font-family: Arial;
+}
+canvas {
+    display: block;
+}
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+const size = 20;
+let snake, dir, nextDir, food, score, gameOver, gameStarted;
+let gameSpeed = 100;
+let lastTime = 0;
+
+// Canlı renkler listesi
+const colors = ["#00FFFF","#00FF7F","#FFFF00","#FFA500","#1E90FF","#ADFF2F","#FF69B4"];
+
+// Başlat
+function startGame(){
+    snake = [{x:200, y:200}];
+    dir = {x:size, y:0};
+    nextDir = {x:size, y:0};
+    score = 0;
+    gameOver = false;
+    gameStarted = true;
+    gameSpeed = 100;
+    spawnFood();
+}
+
+// Elma spawn
+function spawnFood(){
+    let empty = [];
+    for(let x=0;x<canvas.width;x+=size){
+        for(let y=0;y<canvas.height;y+=size){
+            if(!snake.some(s=>s.x===x && s.y===y)){
+                empty.push({x,y});
+            }
+        }
+    }
+    if(empty.length === 0){
+        gameOver = true;
+        return;
+    }
+    food = empty[Math.floor(Math.random()*empty.length)];
+}
+
+// Input (ters dönüş yasak)
+document.addEventListener("keydown",(e)=>{
+    if(!gameStarted && (e.key===" " || e.key==="Enter")){
+        startGame();
+        return;
+    }
+    if(gameOver && e.key==="r"){
+        startGame();
+        return;
+    }
+    if(!gameStarted || gameOver) return;
+
+    switch(e.key){
+        case "w": case "ArrowUp":
+            if(dir.y === 0) nextDir={x:0,y:-size};
+            break;
+        case "s": case "ArrowDown":
+            if(dir.y === 0) nextDir={x:0,y:size};
+            break;
+        case "a": case "ArrowLeft":
+            if(dir.x === 0) nextDir={x:-size,y:0};
+            break;
+        case "d": case "ArrowRight":
+            if(dir.x === 0) nextDir={x:size,y:0};
+            break;
+    }
+});
+
+// Update
+function update(){
+    if(!gameStarted || gameOver) return;
+
+    dir = nextDir;
+
+    const head = {x:snake[0].x + dir.x, y:snake[0].y + dir.y};
+
+    if(head.x <0 || head.y <0 || head.x >= canvas.width || head.y >= canvas.height ||
+       snake.some(s=>s.x===head.x && s.y===head.y)){
+        gameOver = true;
+        return;
+    }
+
+    snake.unshift(head);
+
+    if(head.x === food.x && head.y === food.y){
+        score++;
+        spawnFood();
+        gameSpeed = Math.max(40, gameSpeed-2);
+    } else {
+        snake.pop();
+    }
+}
+
+// Draw
+function draw(){
+    // Kareli arka plan (siyah ve gri)
+    const rows = Math.floor(canvas.width/size);
+    const cols = Math.floor(canvas.height/size);
+    for(let x=0;x<rows;x++){
+        for(let y=0;y<cols;y++){
+            ctx.fillStyle = (x+y)%2===0 ? "#000000" : "#2c2c2c";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+    }
+
+    if(!gameStarted){
+        ctx.fillStyle="white";
+        ctx.font="40px Arial";
+        ctx.fillText("SPACE ile başlat",canvas.width/2-180,canvas.height/2);
+        return;
+    }
+
+    // Yılan canlı renklerde
+    snake.forEach((p,i)=>{
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillRect(p.x,p.y,size,size);
+    });
+
+    // Elma kırmızı ve görünür
+    const t = Date.now()/200;
+    const scale = 0.8 + 0.2*Math.sin(t);
+    ctx.fillStyle="red";
+    ctx.fillRect(food.x + size*(1-scale)/2, food.y + size*(1-scale)/2, size*scale, size*scale);
+
+    // Skor
+    ctx.fillStyle="white";
+    ctx.font="25px Arial";
+    ctx.fillText("Skor: " + score,10,30);
+
+    // Game Over
+    if(gameOver){
+        ctx.fillStyle="red";
+        ctx.font="50px Arial";
+        ctx.fillText("GAME OVER",canvas.width/2-150,canvas.height/2);
+        ctx.font="25px Arial";
+        ctx.fillText("R = yeniden başla",canvas.width/2-120,canvas.height/2+40);
+    }
+}
+
+// Loop
+function gameLoop(timestamp){
+    if(timestamp - lastTime > gameSpeed){
+        update();
+        lastTime = timestamp;
+    }
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+gameStarted=false;
+gameOver=false;
+requestAnimationFrame(gameLoop);
+</script>
+
+</body>
+</html>
